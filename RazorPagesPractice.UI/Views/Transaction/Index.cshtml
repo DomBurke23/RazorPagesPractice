@@ -1,0 +1,195 @@
+﻿@using System.Linq;
+@using System.Net;
+
+@model RazorPagesPractice.UI.Models.TransactionViewModel
+
+@{
+    ViewData["Title"] = "";
+}
+<head>
+    <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jszip-2.5.0/dt-1.10.16/b-1.5.1/b-html5-1.5.1/datatables.min.css" />
+    <link rel="stylesheet" type="text/css" href="~/css/transaction.css" />
+    <script type="text/javascript" src="https://cdn.datatables.net/v/dt/jszip-2.5.0/dt-1.10.16/b-1.5.1/b-html5-1.5.1/datatables.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-search text-center">
+                <span style="color: hotpink">TReference:</span>
+                <input type="text" id="txtSearchByTref">
+
+                <input type="button" id="btnSearchByTref" value="Go">
+                <a href="#" data-toggle="popover" style="color: white; text-decoration: none"
+                    class="glyphicon glyphicon-question-sign" title="Help"
+                   data-placement="bottom"
+                   data-content="Enter a TReference to populate table of transactions. <br /> TReference needs to be valid for table load."
+                    data-html="true"></a>
+                <a asp-area="" asp-controller="Transaction" asp-action="Index">Reset Search</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-div">
+        <br />
+        <div class="text-center">
+            <h4><u>Transaction Viewer</u></h4>
+        </div>
+        <div class="center-div">
+            <p class="text-center">
+               @if (Model != null && Model.StatusCode != HttpStatusCode.OK)
+                {
+                    <span>Account Status: n/a</span> <br />
+                    <span id="error" style="color: red">@Model.Reason</span>
+                }
+               @if (Model != null && Model.StatusCode == HttpStatusCode.OK)
+                {
+                    <span>TReference: @Model.Tref.ToUpper()</span>
+                    <br />
+                }
+            </p>
+            <form>
+                <br />
+                <table id="tblAccount" style="width: 100%" class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Description</th>
+                            <th>Item</th>
+                            <th>Value/Amount</th>
+                            <th>Balance</th>
+                        </tr>
+                        <tr id="filterrow">
+                            <th>Reference</th>
+                            <th>Description</th>
+                            <th>Item</th>
+                            <th>Value/Amount</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                       @if (Model == null || Model.StatusCode != HttpStatusCode.OK)
+                        {
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                        }
+                        else
+                        {
+                           @foreach (var item in Model.TransactionResponseEntities
+                                .ToList())
+                            {
+                                <tr>
+                                    <th></th>
+                                    <th>@item.Description</th>
+                                   @if (item.Amount < 0)
+                                    {
+                                        <th>@item.Amount.ToString("#,###,##0.00")</th>
+                                        <th>0.00</th>
+                                    }
+                                    else
+                                    {
+                                        <th>0.00</th>
+                                        <th>@item.Amount.ToString("#,###,##0.00")</th>
+                                    }
+                                    <th>@item.Balance.ToString("#,###,##0.00")</th>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th></th>
+                            <th>Total:</th>
+                           @if (Model != null && Model.StatusCode == HttpStatusCode.OK)
+                            {
+                                //out
+                                <th>@Model.TransactionResponseEntities?.Where(y => (y.Amount < 0)).Sum(x => x.Amount).ToString("#,###,##0.00")</th>
+                                //in
+                                <th>@Model.TransactionResponseEntities?.Where(y => (y.Amount > 0)).Sum(x => x.Amount).ToString("#,###,##0.00")</th>
+                                <th>@Model.TransactionResponseEntities?.LastOrDefault()?.Balance.ToString("#,###,##0.00")</th>
+                            }
+                            else
+                            {
+                                <th>0</th>
+                                <th>0</th>
+                                <th>0</th>
+                            }
+                        </tr>
+                    </tfoot>
+                </table>
+            </form>
+        </div>
+    </div>
+</body>
+<script>
+    //Adds textbox for individual column search
+    $('#tblAccount thead tr#filterrow th').each(function () {
+        var title = $('#tblAccount thead th').eq($(this).index()).text();
+        $(this).html('<input style="width: 100%;border: 1px solid #ced4da; border-radius: 3px;" type="text" onclick="stopPropagation(event);" placeholder="Search ' + title + '" />');
+    });
+
+    //Apply the search functionality for individual columns
+    $("#tblAccount thead input").on('keyup change', function () {
+        table
+            .column($(this).parent().index() + ':visible')
+            .search(this.value)
+            .draw();
+    });
+
+    //DataTable
+    var table = $('#tblAccount').DataTable({
+        "dom": 'lBfrtip',
+        "orderCellsTop": true,
+        "bSort": false,
+        "language":
+        {
+            "search": "Search Entire Table:",
+            "lengthMenu": 'Show <select>' +
+                '<option value="10">10</option>' +
+                '<option value="25">25</option>' +
+                '<option value="50">50</option>' +
+                '<option value="100">100</option>' +
+                '<option value="-1">All</option>' +
+                '</select> rows'
+        },
+
+        //Identifies the columns so they can be used 
+        "aoColumns": [
+            { "mDataProp": "Reference" },
+            { "mDataProp": "Description" },
+            { "mDataProp": "Item" },
+            { "mDataProp": "Value/Amount" },
+            { "mDataProp": "Balance" },
+        ],
+        "buttons": [{ extend: 'csv', footer: true },
+        { extend: 'excel', footer: true }]
+    });
+
+    //Enter keypress
+    $(document).on('keypress', function (event) {
+        if (event.which == 13) {
+            $("#btnSearchByTref").click();
+        }
+    });
+
+    //Grabs values from TRef and date searches for location url
+    $("#btnSearchByTref").click(function () {
+        var tRef = $("#txtSearchByTref").val();
+
+        document.location = window.location.origin +
+            "/v1/transaction/getTransaction?tRef=" + tRef;
+    });
+
+    //Enables the help popover
+    $(document).ready(function () {
+        $('[data-toggle="popover"]').popover();
+    });
+</script>
